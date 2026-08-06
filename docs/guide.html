@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharpFlow — User Guide</title>
+<style>
+  :root{color-scheme:dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#222221;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --good:#0ca30c; --warn:#fab219; --crit:#d03b3b;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--page);color:var(--ink-2);font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;
+    max-width:820px;margin:0 auto;padding:36px 22px 60px}
+  h1{color:var(--ink);font-size:26px;letter-spacing:-.02em;margin-bottom:4px}
+  h1 .a{color:var(--s1)}
+  .lede{color:var(--muted);margin-bottom:28px}
+  h2{color:var(--ink);font-size:18px;margin:34px 0 10px;padding-top:18px;border-top:1px solid var(--border)}
+  h3{color:var(--ink);font-size:15px;margin:18px 0 6px}
+  p{margin:8px 0}
+  ol,ul{margin:8px 0 8px 22px}
+  li{margin:5px 0}
+  b,strong{color:var(--ink)}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:10px 0}
+  .step .n{display:inline-block;background:var(--s1);color:#fff;font-weight:700;font-size:12px;
+    border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;margin-right:8px}
+  code,kbd{background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;
+    font-size:13px;color:var(--ink);font-family:ui-monospace,Menlo,monospace}
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;padding:1px 6px;vertical-align:1px}
+  .tag.mover{background:rgba(217,89,38,.16);color:#ec835a}
+  .tag.whale{background:rgba(57,135,229,.16);color:var(--s1)}
+  .tag.thin{background:rgba(250,178,25,.14);color:var(--warn)}
+  .callout{border-left:3px solid var(--warn);background:var(--surface);border-radius:6px;padding:10px 14px;margin:12px 0}
+  .callout.blue{border-left-color:var(--s1)}
+  .callout.red{border-left-color:var(--crit)}
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);
+    border-radius:8px;overflow:hidden;margin:10px 0;font-size:13.5px}
+  th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;text-align:left;
+    padding:8px 10px;border-bottom:1px solid var(--border)}
+  td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .good{color:var(--good)} .bad{color:var(--crit)}
+</style>
+</head>
+<body>
+<h1>Sharp<span class="a">Flow</span> — User Guide</h1>
+<p class="lede">Whale flow, price alerts, and a sportsbook fair-odds edge model for Polymarket sports markets.</p>
+
+<h2>1 · Open it in live mode</h2>
+<div class="step"><span class="n">1</span><b>Check the status dot</b> (top right). <span class="good">● LIVE</span> means data is streaming — markets refresh every 60s, whale trades every 30s, book odds every 5 min, all while the page is open.</div>
+<div class="step"><span class="n">2</span>If you see <span style="color:var(--warn)">● SNAPSHOT MODE</span> and a yellow banner, the viewer you're in blocks external data. Fix: <b>download the HTML file and double-click it</b> so it opens in Chrome or Safari. From your browser everything streams live — no server, no login, no keys.</div>
+<div class="step"><span class="n">3</span><b>Leave the tab open</b> during game windows. Auto-refresh pauses when the tab is hidden and resumes when you come back; the <kbd>↻ Refresh</kbd> button forces an update any time.</div>
+
+<h2>2 · The 5-minute daily routine</h2>
+<ol>
+  <li><b>Edge tab first.</b> Anything above your edge threshold? (Most days: no. That's normal and correct.)</li>
+  <li><b>Whale Feed.</b> Scan the consensus table — where is big money net-concentrating today?</li>
+  <li><b>Cross-check.</b> A market that shows a book edge <i>and</i> whale flow on the same side is the only signal worth real attention.</li>
+  <li><b>Chart it.</b> Click the row — did the price already run (you're late) or is it flat (you're early)?</li>
+  <li><b>Alerts tab</b> before games start — movers, clusters, and edges accumulate there so you don't have to watch the tables.</li>
+</ol>
+
+<h2>3 · Markets tab</h2>
+<h3>Today's top picks (top of the tab)</h3>
+<p>Up to five markets ranked by a transparent <b>signal score</b>: book edge (weighted heaviest, up to 12 pts) + net whale flow (up to 5 pts) + a bonus when both agree (+3) − penalties for thin books or a negative book edge. Each card shows exactly which chips earned its score — nothing is a black box.</p>
+<ul>
+  <li>A market only qualifies with a real directional signal: <b>book edge ≥ 1¢</b> or <b>net whale flow ≥ $10k</b> on one side. No signal, no pick.</li>
+  <li><b>The list never pads.</b> "Only 2 qualify right now" means exactly that — a quiet slate is information, not a malfunction. Tout services invent five picks daily; this doesn't.</li>
+  <li>The strongest cards show <span class="tag" style="background:rgba(12,163,12,.16);color:#0ca30c">edge + whales agree</span> — the confluence case from section 8. A whale-flow-only card with a low score is one large trader's opinion, not a system signal.</li>
+  <li>Click a card to open its chart. Picks refresh with the whale feed (every 30s).</li>
+</ul>
+<p>The top ~40 sports markets by 24-hour volume. Columns: price of the first-listed outcome (in ¢ = implied probability), 1h/24h moves, bid–ask spread, volume, end date.</p>
+<table>
+  <tr><th>Badge</th><th>Meaning</th><th>What to do</th></tr>
+  <tr><td><span class="tag mover">MOVER</span></td><td>Moved ≥10¢ in 24h or ≥5¢ in 1h</td><td>Chart it — find out what moved it before you touch it</td></tr>
+  <tr><td><span class="tag whale">WHALE</span></td><td>Large trades hit this market recently</td><td>Check Whale Feed for which side they're on</td></tr>
+  <tr><td><span class="tag thin">THIN</span></td><td>Spread ≥3¢</td><td>Illiquid — you'll pay the spread both ways; treat edges here skeptically</td></tr>
+</table>
+<ul>
+  <li><b>Search + sport filter</b> narrow the list; <b>click a column header</b> to sort by it.</li>
+  <li><b>"Hide near-resolved"</b> (on by default) hides markets past 97¢/below 3¢ — turn it off to see games in progress.</li>
+  <li><b>Click any row</b> to open its price chart.</li>
+</ul>
+
+<h2>4 · Edge tab — the prediction layer</h2>
+<p>The model: sportsbook moneylines (DraftKings via ESPN's free feed) → implied probability → <b>de-vig</b> (strip the book's margin so both sides sum to 100%) → compare to what Polymarket charges you.</p>
+<table>
+  <tr><th>Column</th><th>Reading it</th></tr>
+  <tr><td><b>Buy side</b></td><td>The outcome with the better (least bad) edge</td></tr>
+  <tr><td><b>Poly ask</b></td><td>What it actually costs to buy that side right now</td></tr>
+  <tr><td><b>Fair (book)</b></td><td>The de-vigged sportsbook probability</td></tr>
+  <tr><td><b>Edge</b></td><td>Fair − ask. <span class="good">+3.0¢</span> = books think it's worth 3¢ more than Polymarket charges</td></tr>
+  <tr><td><b>EV / $100</b></td><td>Expected profit per $100 staked <i>if</i> the book number is the true probability</td></tr>
+</table>
+<ul>
+  <li>Set <b>"Highlight edge ≥"</b> to your threshold (default 2¢; below ~2¢ is noise + fees).</li>
+  <li>O/U markets only match when the book total and the Polymarket line are <b>identical</b> — a 9.0 total is never compared against an 8.5 market.</li>
+  <li>An empty table above threshold is the tool working, not failing. Edges appear mostly in the hour before game time and get arbed away in minutes.</li>
+</ul>
+<h3>Optional: multi-book consensus + tennis</h3>
+<div class="step"><span class="n">1</span>Get a free key at <b>the-odds-api.com</b> (500 requests/month — plenty).</div>
+<div class="step"><span class="n">2</span>Paste it into the key field on the Edge tab and hit <kbd>Connect</kbd>. Source column switches from "DraftKings" to "<i>N</i> books", and tennis matches get priced (ESPN doesn't carry tennis odds).</div>
+<div class="step"><span class="n">3</span>The key lives only in the page's memory — re-paste it after a reload. Reconnect manually (it doesn't auto-poll, to protect your monthly quota).</div>
+
+<h2>5 · Whale Feed tab</h2>
+<ul>
+  <li><b>Consensus table (top):</b> net flow per outcome — buys minus sells in dollars across all loaded large trades. <span class="good">+$107k</span> on "Over" means whales are net long the Over by $107k. The trade count matters: +$60k across 8 trades is conviction; one $60k trade is one person's opinion.</li>
+  <li><b>Feed (bottom):</b> every trade over your minimum — time, trader (click the name → their full Polymarket profile and P&L history), <span class="good">BUY</span>/<span class="bad">SELL</span>, price, notional.</li>
+  <li>Drop the min to <b>$5k</b> on quiet mornings, raise to <b>$25k+</b> during big slates. Untick <b>"Sports only"</b> to see whale money in politics/crypto too.</li>
+</ul>
+<div class="callout">Whales are on <b>both sides</b> of most games — today's snapshot had big money buying <i>and</i> selling Norrie in the same hour. The signal is sustained one-sided flow, not any single print.</div>
+
+<h2>6 · Charts tab</h2>
+<ul>
+  <li>Pick a market from the dropdown — <b>both outcomes are listed</b>, so you can chart either side.</li>
+  <li>Ranges: <kbd>1H</kbd> <kbd>6H</kbd> <kbd>1D</kbd> <kbd>1W</kbd> <kbd>1M</kbd>. Hover for the crosshair readout.</li>
+  <li><span style="color:var(--s2)">●</span> Orange dots = whale trades, placed on the price line when they happened. Hover one for side/size/price. Dots <i>before</i> a run-up = whales led the move; dots <i>after</i> = they chased it.</li>
+</ul>
+
+<h2>7 · Alerts tab</h2>
+<p>Rules are evaluated on every refresh while the page is open. All five are editable; changing one clears and re-runs the log.</p>
+<table>
+  <tr><th>Rule</th><th>Default</th><th>Catches</th></tr>
+  <tr><td>📈 24h move</td><td>≥10¢</td><td>Repricings — injury news, lineup changes, momentum</td></tr>
+  <tr><td>⚡ 1h move</td><td>≥5¢</td><td>Something happening <i>right now</i></td></tr>
+  <tr><td>🐋 Whale trade</td><td>≥$25k</td><td>Single conviction-sized bets</td></tr>
+  <tr><td>🎯 Cluster</td><td>≥3 trades</td><td>Multiple whales piling into one market</td></tr>
+  <tr><td>💡 Book edge</td><td>≥4¢</td><td>Polymarket priced meaningfully away from the books</td></tr>
+  <tr><td>🔔 Session move</td><td>≥3¢ (fixed)</td><td>Price changed since you opened the page</td></tr>
+</table>
+
+<h2>8 · Discipline (read once, remember always)</h2>
+<div class="callout red"><b>An edge is a hypothesis, not a payday.</b> A +4¢ edge vs. DraftKings can mean Polymarket is wrong — or that the book is stale and about to move. Polymarket sometimes leads the books, especially near game time.</div>
+<ul>
+  <li><b>Best signal = confluence:</b> book edge + same-direction whale flow + a chart that hasn't already run.</li>
+  <li><b>Respect the spread.</b> A 3¢ edge on a <span class="tag thin">THIN</span> market with a 3¢ spread is zero edge.</li>
+  <li><b>Small, boring sizing.</b> Even real edges lose ~40% of the time at these prices. No alert here is a reason to bet more than you'd calmly lose.</li>
+  <li>This tool shows you what markets, whales, and books believe. It does not know who wins tonight. Nothing in it is financial advice.</li>
+</ul>
+
+<h2>9 · Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Cause → fix</th></tr>
+  <tr><td>Yellow snapshot banner</td><td>Viewer blocks external fetches → open the downloaded HTML directly in your browser</td></tr>
+  <tr><td>Edge tab: "0 book games"</td><td>ESPN only publishes odds <b>pre-game</b>; during live games they vanish → check back next slate</td></tr>
+  <tr><td>A game shows in Markets but not Edge</td><td>No book odds yet, team-name mismatch, or O/U line differs from the book's — all skip by design</td></tr>
+  <tr><td>odds-api "fetch failed"</td><td>Bad key, monthly quota used up, or a network-restricted viewer → try in a normal browser tab</td></tr>
+  <tr><td>Everything frozen</td><td>Auto-refresh pauses in background tabs → focus the tab or hit <kbd>↻ Refresh</kbd></td></tr>
+</table>
+
+<p style="margin-top:30px;color:var(--muted);font-size:12.5px">SharpFlow · data from Polymarket public APIs + ESPN/DraftKings odds · informational only, not financial advice.</p>
+</body>
+</html>

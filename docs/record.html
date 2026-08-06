@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharpFlow — Public Track Record</title>
+<style>
+:root{color-scheme:dark}
+body{background:#0d0d0d;color:#c3c2b7;font:14px/1.5 system-ui,sans-serif;max-width:1000px;margin:0 auto;padding:30px 18px}
+h1{color:#fff;font-size:22px} h1 span{color:#3987e5}
+.lede{color:#898781;margin:4px 0 20px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px}
+.tile{background:#1a1a19;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px 14px}
+.tile .k{font-size:11px;color:#898781;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:22px;font-weight:700;color:#fff;margin-top:2px}
+table{width:100%;border-collapse:collapse;background:#1a1a19;border:1px solid rgba(255,255,255,.1);border-radius:8px;overflow:hidden}
+th{font-size:11px;color:#898781;text-transform:uppercase;text-align:left;padding:8px 10px;border-bottom:1px solid #383835}
+td{padding:8px 10px;border-bottom:1px solid #2c2c2a;font-size:13px}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sub{font-size:11.5px;color:#898781}
+.won{color:#0ca30c;font-weight:600} .lost{color:#d03b3b;font-weight:600} .open{color:#fab219} .pos{color:#0ca30c}
+footer{color:#898781;font-size:11.5px;margin-top:20px;line-height:1.6}
+</style></head><body>
+<h1>Sharp<span>Flow</span> — Public Track Record</h1>
+<p class="lede"><a href="index.html" style="color:#3987e5;text-decoration:none">← back to the dashboard</a> ·
+every edge signal this bot has ever fired, logged automatically and resolved against final Polymarket prices.
+Log lives in git — history is the audit trail. Updated 2026-08-06 23:38 UTC.</p>
+<div class="tiles">
+<div class="tile"><div class="k">Signals</div><div class="v">0</div></div>
+<div class="tile"><div class="k">Resolved</div><div class="v">0</div></div>
+<div class="tile"><div class="k">Record</div><div class="v">0–0</div></div>
+<div class="tile"><div class="k">Hit rate</div><div class="v">—</div></div>
+<div class="tile"><div class="k">Break-even</div><div class="v">—</div></div>
+<div class="tile"><div class="k">Flat-stake ROI</div><div class="v ">—</div></div>
+</div>
+<p style='background:#1a1a19;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:22px;text-align:center;color:#898781'>No signals logged yet. The bot only fires when Polymarket prices diverge from de-vigged sportsbook odds — that's rare by design.</p>
+<footer>Method: DraftKings moneylines (ESPN public feed) → implied probability → de-vig → compare to Polymarket best ask.
+A signal is logged once per market+side when edge ≥ threshold; it is scored WON/LOST from Polymarket's final resolution prices, flat $100 stakes, no compounding, no cherry-picking, losses included.
+Hit rate must beat the break-even column (average price paid) for the strategy to be profitable.
+Informational only — not financial advice.</footer>
+</body></html>

@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SharpFlow — Polymarket Sports Flow</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#222221;
+    --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{
+    background:var(--page); color:var(--ink);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:20px; min-height:100vh;
+  }
+  a{color:var(--s1); text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px}
+  h1{font-size:20px; font-weight:700; letter-spacing:-.02em}
+  h1 .accent{color:var(--s1)}
+  .sub{color:var(--muted); font-size:12.5px}
+  #status{font-size:12px; color:var(--muted); margin-left:auto; display:flex; align-items:center; gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+  .dot.live{background:var(--good)} .dot.snap{background:var(--warn)}
+  #banner{display:none; background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--warn);
+    padding:8px 12px; border-radius:6px; font-size:12.5px; color:var(--ink-2); margin:10px 0}
+  /* stat tiles */
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:14px 0}
+  .tile{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px}
+  .tile .k{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .tile .v{font-size:22px; font-weight:700; margin-top:2px}
+  .tile .d{font-size:12px; color:var(--ink-2); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* tabs */
+  nav{display:flex; gap:2px; border-bottom:1px solid var(--axis); margin:8px 0 14px; flex-wrap:wrap}
+  nav button{background:none; border:none; color:var(--muted); font:600 13.5px system-ui,sans-serif;
+    padding:9px 14px; cursor:pointer; border-bottom:2px solid transparent}
+  nav button:hover{color:var(--ink-2)}
+  nav button.on{color:var(--ink); border-bottom-color:var(--s1)}
+  section{display:none} section.on{display:block}
+  /* controls */
+  .controls{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+  .controls input[type=text], .controls select{
+    background:var(--surface); color:var(--ink); border:1px solid var(--border); border-radius:6px;
+    padding:6px 9px; font-size:13px; outline:none}
+  .controls input[type=text]{width:220px}
+  .controls label{font-size:12.5px; color:var(--ink-2); display:flex; gap:5px; align-items:center; cursor:pointer}
+  .controls .spacer{flex:1}
+  button.act{background:var(--surface-2); color:var(--ink-2); border:1px solid var(--border); border-radius:6px;
+    padding:6px 10px; font-size:12.5px; cursor:pointer}
+  button.act:hover{color:var(--ink)}
+  /* tables */
+  table{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden}
+  thead th{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; text-align:left;
+    padding:8px 10px; border-bottom:1px solid var(--axis); cursor:pointer; user-select:none; white-space:nowrap}
+  thead th.num{text-align:right}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--grid); font-size:13px; vertical-align:top}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--surface-2)}
+  tbody tr.click{cursor:pointer}
+  td.num{text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .mkt-q{font-weight:600} .mkt-e{font-size:11.5px; color:var(--muted)}
+  .pos{color:var(--good)} .neg{color:var(--crit)}
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:1px}
+  .badge.mover{background:rgba(217,89,38,.16); color:var(--serious)}
+  .badge.whale{background:rgba(57,135,229,.16); color:var(--s1)}
+  .badge.thin{background:rgba(250,178,25,.14); color:var(--warn)}
+  .badge.good{background:rgba(12,163,12,.16); color:var(--good)}
+  .badge.sport{background:var(--surface-2); color:var(--ink-2); font-weight:600; margin-left:0}
+  .side-b{color:var(--good); font-weight:700} .side-s{color:var(--crit); font-weight:700}
+  .empty{color:var(--muted); padding:26px; text-align:center; background:var(--surface);
+    border:1px solid var(--border); border-radius:8px}
+  /* chart */
+  .chartwrap{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px}
+  .charthead{display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; margin-bottom:6px}
+  .charthead .t{font-weight:700; font-size:15px}
+  .charthead .cur{font-size:22px; font-weight:700; color:var(--s1); font-variant-numeric:tabular-nums}
+  .ranges{display:flex; gap:2px; margin-left:auto}
+  .ranges button{background:none; border:1px solid transparent; color:var(--muted); font-size:12px; padding:4px 8px;
+    border-radius:5px; cursor:pointer}
+  .ranges button.on{color:var(--ink); background:var(--surface-2); border-color:var(--border)}
+  #tooltip{position:fixed; display:none; background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+    padding:6px 9px; font-size:12px; pointer-events:none; z-index:10; font-variant-numeric:tabular-nums;
+    box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  .legendline{font-size:12px; color:var(--ink-2); margin-top:6px; display:flex; gap:16px; flex-wrap:wrap}
+  .sw{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+  /* alerts */
+  .alert-item{display:flex; gap:10px; padding:9px 12px; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; margin-bottom:8px; align-items:baseline}
+  .alert-item .ico{font-size:15px}
+  .alert-item .when{margin-left:auto; color:var(--muted); font-size:11.5px; white-space:nowrap; font-variant-numeric:tabular-nums}
+  .rulebox{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px;
+    display:flex; gap:18px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--ink-2)}
+  .rulebox input[type=number]{width:70px; background:var(--surface-2); color:var(--ink); border:1px solid var(--border);
+    border-radius:5px; padding:4px 6px; font-size:12.5px}
+  /* top picks */
+  .pickshead{display:flex; align-items:baseline; gap:10px; margin:2px 0 8px}
+  .pickshead h2{font-size:15px; color:var(--ink)}
+  .pickshead .sub{font-size:12px}
+  .picks{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; margin-bottom:16px}
+  .pick{background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; cursor:pointer; position:relative}
+  .pick:hover{background:var(--surface-2)}
+  .pick .rank{position:absolute; top:10px; right:12px; font-size:20px; font-weight:800; color:var(--axis)}
+  .pick .side{font-size:16px; font-weight:700; color:var(--ink)}
+  .pick .side .px{color:var(--s1); font-variant-numeric:tabular-nums}
+  .pick .mq{font-size:12px; color:var(--muted); margin:2px 0 8px; padding-right:30px}
+  .pick .chips{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px}
+  .pick .chips .badge{margin-left:0}
+  .scorebar{height:4px; background:var(--surface-2); border-radius:2px; overflow:hidden}
+  .scorebar i{display:block; height:100%; background:var(--s1)}
+  .pick .sc{font-size:11px; color:var(--muted); margin-top:4px; font-variant-numeric:tabular-nums}
+  footer{margin-top:22px; color:var(--muted); font-size:11.5px; line-height:1.6}
+  @media (max-width:720px){ td:nth-child(5),th:nth-child(5){display:none} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sharp<span class="accent">Flow</span></h1>
+  <span class="sub">Polymarket sports · whale flow · price alerts</span>
+  <span class="sub"><a href="guide.html">Guide</a> · <a href="record.html">Track record</a></span>
+  <span id="status"><span class="dot" id="statdot"></span><span id="stattext">connecting…</span>
+    <button class="act" id="refreshbtn">↻ Refresh</button></span>
+</header>
+<div id="banner"></div>
+
+<div class="tiles" id="tiles"></div>
+
+<nav>
+  <button data-tab="markets" class="on">Markets</button>
+  <button data-tab="edge">Edge</button>
+  <button data-tab="whales">Whale Feed</button>
+  <button data-tab="charts">Charts</button>
+  <button data-tab="alerts">Alerts <span id="alertcount" class="badge mover" style="display:none">0</span></button>
+</nav>
+
+<section id="tab-markets" class="on">
+  <div class="pickshead"><h2>Today's top picks</h2><span class="sub" id="pickssub"></span></div>
+  <div class="picks" id="picks"></div>
+  <div class="controls">
+    <input type="text" id="q" placeholder="Search markets…">
+    <select id="sportsel"><option value="">All sports</option></select>
+    <label><input type="checkbox" id="hideres" checked> Hide near-resolved (&gt;97¢ / &lt;3¢)</label>
+    <span class="spacer"></span>
+    <span class="sub" id="mktcount"></span>
+  </div>
+  <div id="mkt-table"></div>
+</section>
+
+<section id="tab-edge">
+  <div class="rulebox" style="margin-bottom:12px">
+    <strong style="color:var(--ink)">Fair-odds model</strong>
+    <span>De-vigged sportsbook moneylines (ESPN·DraftKings, free) vs. Polymarket ask. Edge = fair prob − cost to buy.</span>
+  </div>
+  <div class="controls">
+    <label>Highlight edge ≥ <input type="number" id="minedge" value="2" min="0" max="30" style="width:56px;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:4px 6px">¢</label>
+    <label><input type="checkbox" id="showallmatched" checked> Show all matched games</label>
+    <span class="spacer"></span>
+    <span class="sub" id="edgestatus"></span>
+  </div>
+  <div class="controls" style="margin-top:-4px">
+    <input type="text" id="oddskey" placeholder="Optional: the-odds-api.com key (adds tennis + multi-book consensus)" style="width:340px">
+    <button class="act" id="oddsconnect">Connect</button>
+    <span class="sub" id="oddsapistatus">Free tier = 500 credits/mo · key stays in this page's memory only, never stored</span>
+  </div>
+  <div id="edge-table"></div>
+</section>
+
+<section id="tab-whales">
+  <div class="controls">
+    <select id="whalemin">
+      <option value="5000">Min $5k</option>
+      <option value="10000" selected>Min $10k</option>
+      <option value="25000">Min $25k</option>
+      <option value="50000">Min $50k</option>
+    </select>
+    <label><input type="checkbox" id="sportsonly" checked> Sports only</label>
+    <span class="spacer"></span>
+    <span class="sub" id="whalecount"></span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr; gap:14px" id="whalegrid">
+    <div id="consensus"></div>
+    <div id="whale-table"></div>
+  </div>
+</section>
+
+<section id="tab-charts">
+  <div class="controls">
+    <select id="chartsel" style="max-width:480px"></select>
+  </div>
+  <div class="chartwrap">
+    <div class="charthead">
+      <span class="t" id="charttitle">Select a market</span>
+      <span class="cur" id="chartcur"></span>
+      <div class="ranges" id="ranges">
+        <button data-r="1h">1H</button><button data-r="6h">6H</button><button data-r="1d">1D</button>
+        <button data-r="1w" class="on">1W</button><button data-r="1m">1M</button>
+      </div>
+    </div>
+    <div id="chart"><div class="empty">Pick a market above, or click any row in the Markets tab.</div></div>
+    <div class="legendline" id="chartlegend"></div>
+  </div>
+</section>
+
+<section id="tab-alerts">
+  <div class="rulebox">
+    <strong style="color:var(--ink)">Alert rules</strong>
+    <label>24h move ≥ <input type="number" id="r-d1" value="10" min="1" max="90">¢</label>
+    <label>1h move ≥ <input type="number" id="r-h1" value="5" min="1" max="90">¢</label>
+    <label>Whale trade ≥ $<input type="number" id="r-wsz" value="25000" step="5000"></label>
+    <label>Cluster: ≥ <input type="number" id="r-clu" value="3" min="2" max="20"> whale trades on one market</label>
+    <label>Book edge ≥ <input type="number" id="r-edge" value="4" min="1" max="50">¢</label>
+  </div>
+  <div id="alertlist"></div>
+</section>
+
+<div id="tooltip"></div>
+
+<footer>
+  Data: Polymarket public APIs (Gamma · CLOB · Data-API), no auth, refreshed every 60s while open (whales 30s).
+  Prices are implied probabilities in cents. Whale flow = taker trades ≥ your $ filter; net flow = buys − sells per outcome.<br>
+  Edge model: sportsbook moneylines (ESPN/DraftKings free feed; optionally multi-book consensus via your the-odds-api key) converted to implied probability and de-vigged
+  (normalized so both sides sum to 100%) — the standard "fair odds" benchmark, the same one Sportstensor scores its miners against. Edge = fair prob − Polymarket ask. O/U markets match only when the book line is identical.
+  Caveats: a single book is a noisy oracle; ESPN odds exist pre-game only; a positive edge vs. the books is not a guaranteed profit — books move, and Polymarket sometimes leads them.<br>
+  This is an informational tool, not financial advice. Past whale positioning does not guarantee outcomes.
+</footer>
+
+<script>
+"use strict";
+/* ============ CONFIG ============ */
+const GAMMA="https://gamma-api.polymarket.com", DATA="https://data-api.polymarket.com", CLOB="https://clob.polymarket.com";
+const REFRESH_MS=60000, WHALE_MS=30000;
+const SPORT_MAP=[
+  [/^mlb-/,"MLB"],[/^nba-/,"NBA"],[/^nfl-/,"NFL"],[/^nhl-/,"NHL"],[/^wnba-/,"WNBA"],
+  [/^atp-|^wta-/,"Tennis"],[/^(epl|ucl|uel|laliga|seriea|bundesliga|ligue1|mls|fifa|club|arg|bra|lec)-/,"Soccer"],
+  [/^(lol|val|cs2|csgo|dota|esports)-/,"Esports"],[/^ufc-|^mma-/,"UFC"],[/^(f1|nascar)-/,"Racing"],
+  [/^(golf|pga)-/,"Golf"],[/^box-/,"Boxing"]
+];
+function sportOf(slug){ for(const [re,name] of SPORT_MAP) if(re.test(slug||"")) return name; return "Other"; }
+
+/* ============ SNAPSHOT FALLBACK (captured 2026-08-06 22:56 UTC) ============ */
+const SNAP_TS=1786056994;
+const SNAPSHOT={
+events:[
+ {title:"National Bank Open: Cameron Norrie vs Alex de Minaur",slug:"atp-norrie-minaur-2026-08-06",vol24:1949419.47,markets:[
+  {q:"National Bank Open: Cameron Norrie vs Alex de Minaur",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f",out:'["Cameron Norrie", "Alex de Minaur"]',px:'["0.9995", "0.0005"]',tok:'["46113868363610338532716967387392471722673447525194612029200966833304454176981", "15991894147704212162577914761224365892211812673056254413953036995122250018306"]',bb:0.999,ba:1,sp:0.001,v24:1920044.44,d1:null,h1:0.6835,end:"2026-08-13T18:00:00Z",last:0.999}]},
+ {title:"Toronto Blue Jays vs. Chicago Cubs",slug:"mlb-tor-chc-2026-08-06",vol24:1286055.03,markets:[
+  {q:"Toronto Blue Jays vs. Chicago Cubs",cid:"0x14fad2a17d62f79aa7a253406860ef8b36129e195166dfe59a02529fbadc773b",out:'["Toronto Blue Jays", "Chicago Cubs"]',px:'["0", "1"]',tok:'["76411050114818173622082591399147308552927640081052157232695534490267968760333", "10770993856331424850610487321574893225762983288271561981201738661174831920162"]',bb:null,ba:0.001,sp:0.001,v24:985355.84,d1:-0.4945,h1:-0.9145,end:"2026-08-13T18:20:00Z",last:0.001}]},
+ {title:"Washington Nationals vs. Philadelphia Phillies",slug:"mlb-wsh-phi-2026-08-06",vol24:528317.65,markets:[
+  {q:"Washington Nationals vs. Philadelphia Phillies",cid:"0x6d3915d2e5aba59d058874238319a7e83309aaeafbc2a389f5a95f4d3d8ebcd9",out:'["Washington Nationals", "Philadelphia Phillies"]',px:'["0.115", "0.885"]',tok:'["38370818693632047826293734083466690954410806346714028732634307299098188330807", "13586434221502328963355232452739727278993305346004047680095622088479408284211"]',bb:0.11,ba:0.12,sp:0.01,v24:265714.43,d1:-0.14,h1:-0.14,end:"2026-08-13T22:05:00Z",last:0.12},
+  {q:"Washington Nationals vs. Philadelphia Phillies: O/U 8.5",cid:"0xca7242389febd5ef135b9489c3fad22b0a22ad7cbb371797e311c569ccaefb88",out:'["Over", "Under"]',px:'["0.675", "0.325"]',tok:'["3809737964079018432254151481722570608451269508379950220789406592093779866662", "63948171693553334897447043370889596647263350392197639345748017718301168009621"]',bb:0.67,ba:0.68,sp:0.01,v24:37060.59,d1:0.145,h1:0.13,end:"2026-08-06T22:05:00Z",last:0.68}]},
+ {title:"National Bank Open: Jiri Lehecka vs Alexander Blockx",slug:"atp-lehecka-blockx-2026-08-06",vol24:351433.86,markets:[
+  {q:"National Bank Open: Jiri Lehecka vs Alexander Blockx",cid:"0x50454af2389bdcab6394aae8e17f805342d355dbee4fbb1eca2d2a2fd101c7fb",out:'["Jiri Lehecka", "Alexander Blockx"]',px:'["0.875", "0.125"]',tok:'["101966254312574887653429106693383625561372303657564168471249623302915873571994", "48741451714728961501025022349646155426754100191173861333271497503925034959496"]',bb:0.87,ba:0.88,sp:0.01,v24:348120.25,d1:null,h1:0.21,end:"2026-08-13T22:00:00Z",last:0.89}]},
+ {title:"Miami Marlins vs. Atlanta Braves",slug:"mlb-mia-atl-2026-08-06",vol24:331789.38,markets:[
+  {q:"Miami Marlins vs. Atlanta Braves",cid:"0x75925ee36022684960b17d5d8842a0d88ab1f9125f975f9590f34496fbd066d5",out:'["Miami Marlins", "Atlanta Braves"]',px:'["0.405", "0.595"]',tok:'["40687363534028212960607839835820682333797973293032836051942763018317418953122", "76937171036023799030865952666413116379809616275505361305662392099618226713940"]',bb:0.4,ba:0.41,sp:0.01,v24:228305.61,d1:-0.005,h1:null,end:"2026-08-13T23:15:00Z",last:0.4},
+  {q:"Miami Marlins vs. Atlanta Braves: O/U 9.5",cid:"0x162179510b314f11fbfc8b4956352b7d1a4adf003105882c885922e97e8e344b",out:'["Over", "Under"]',px:'["0.435", "0.565"]',tok:'["89181407131761733997268620989722648540876229189692171478700122494334136414433", "72144770122037989456876629089560201839903187309230790466379027682666414669309"]',bb:0.43,ba:0.44,sp:0.01,v24:50043.10,d1:-0.02,h1:null,end:"2026-08-06T23:15:00Z",last:0.44}]},
+ {title:"Los Angeles Angels vs. Miami Marlins",slug:"mlb-laa-mia-2026-08-07",vol24:111.39,markets:[
+  {q:"Los Angeles Angels vs. Miami Marlins",cid:"0x1834230745e97fd13fd6417f8e598f6d9b0c02bab0e15ba8838c84284d25b442",out:'["Los Angeles Angels", "Miami Marlins"]',px:'["0.4", "0.6"]',tok:'["32342878120901228689472996466801131056365192598902193624359867513868183133575", "96825140531144737658509836612440392167927082891120843083486488974093462808519"]',bb:0.39,ba:0.41,sp:0.02,v24:111.39,d1:-0.045,h1:null,end:"2026-08-07T23:10:00Z",last:0.41},
+  {q:"Los Angeles Angels vs. Miami Marlins: O/U 9.5",cid:"0x82018b39fd4f716e6c5beb71837016bd235192c27f40ba1d69edee7958126aa3",out:'["Over", "Under"]',px:'["0.435", "0.565"]',tok:'["114690499535526729781918709459434519343511482830739521792892023230189444884939", "45482723865068340889625454552704275811369417634197997726753149697891081821111"]',bb:0.42,ba:0.45,sp:0.03,v24:0,d1:null,h1:null,end:"2026-08-07T23:10:00Z",last:null},
+  {q:"Los Angeles Angels vs. Miami Marlins: O/U 8.5",cid:"0xef52d53eed615415f36a0a78c94d7a508a0bf951cfaef4d4a6f09322d2c229ea",out:'["Over", "Under"]',px:'["0.55", "0.45"]',tok:'["2668514253197877996816453378768997988171854844258265202325740958865943370915", "28386629541136139066652832348532041905484274018636708968329746035778350720133"]',bb:0.54,ba:0.56,sp:0.02,v24:0,d1:null,h1:0.01,end:"2026-08-07T23:10:00Z",last:null}]},
+ {title:"LoL: Team WE vs Anyone's Legend (BO3) — LPL Group Ascend",slug:"lol-we-al-2026-08-06",vol24:4295222.13,markets:[
+  {q:"LoL: Team WE vs Anyone's Legend (BO3)",cid:"0x24f18bdec315f767612d94e386bc60589185ab6a84e97b080a661a3fce1b2739",out:'["Team WE", "Anyone\'s Legend"]',px:'["1", "0"]',tok:'["39454837653123472794543827936478054021376364890542297508234447037848665235142", "24958596311036741706772728525634642370283880159881485950450831470303643986611"]',bb:0.999,ba:1,sp:0.001,v24:1404874.85,d1:0.7295,h1:null,end:"2026-08-06T19:35:00Z",last:0.999}]}
+],
+trades:[
+ {t:"Miami Marlins vs. Atlanta Braves: O/U 8.5",o:"Over",side:"BUY",sz:194838.91,p:0.55,ts:1786056776,who:"Prickly-Hype",es:"mlb-mia-atl-2026-08-06",cid:"0x6cb8eb4e2af66adfc538e76ce33f44fbafa62069f12afdf6be075e82adbe7297"},
+ {t:"National Bank Open: Jiri Lehecka vs Alexander Blockx",o:"Jiri Lehecka",side:"BUY",sz:18982.78,p:0.87,ts:1786056477,who:"Improbable-Injunction-Carpet",es:"atp-lehecka-blockx-2026-08-06",cid:"0x50454af2389bdcab6394aae8e17f805342d355dbee4fbb1eca2d2a2fd101c7fb"},
+ {t:"Detroit Tigers vs. Seattle Mariners",o:"Detroit Tigers",side:"SELL",sz:12254.54,p:0.999,ts:1786056071,who:"Happy-Default",es:"mlb-det-sea-2026-08-06",cid:"0x0228b93fb01788db845e5868100a3ebd773aeb33f0f65e0926f9e15cc015ac96"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:23999.98,p:0.999,ts:1786055847,who:"Improbable-Injunction-Carpet",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"Washington Nationals vs. Philadelphia Phillies: O/U 10.5",o:"Under",side:"BUY",sz:22222,p:0.56,ts:1786055787,who:"Wordy-Littleneck",es:"mlb-wsh-phi-2026-08-06",cid:"0x26242d09fe5b794b21edceb5f7d82c60042f54fd3dab08e19e79c8fc47507781"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:28303.46,p:0.999,ts:1786055507,who:"Dazzling-Hybridization-Calculation",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"National Bank Open: Aryna Sabalenka vs Shuai Zhang",o:"Aryna Sabalenka",side:"BUY",sz:11992.15,p:0.94,ts:1786055456,who:"Salty-Wording-Breadcrumb",es:"wta-sabalen-zhang-2026-08-06",cid:"0xe8364f07a56f87f316dde01b088fc3ce0c26bbf4a2d8cbf12c0c86a9f35fb919"},
+ {t:"National Bank Open: Jiri Lehecka vs Alexander Blockx",o:"Jiri Lehecka",side:"BUY",sz:12040.32,p:0.84,ts:1786055450,who:"Usable-Manufacturing",es:"atp-lehecka-blockx-2026-08-06",cid:"0x50454af2389bdcab6394aae8e17f805342d355dbee4fbb1eca2d2a2fd101c7fb"},
+ {t:"National Bank Open: Aryna Sabalenka vs Shuai Zhang",o:"Aryna Sabalenka",side:"BUY",sz:12536.2,p:0.94,ts:1786055448,who:"Trivial-Ravioli",es:"wta-sabalen-zhang-2026-08-06",cid:"0xe8364f07a56f87f316dde01b088fc3ce0c26bbf4a2d8cbf12c0c86a9f35fb919"},
+ {t:"National Bank Open: Aryna Sabalenka vs Shuai Zhang",o:"Aryna Sabalenka",side:"BUY",sz:39137.05,p:0.94,ts:1786055435,who:"Trivial-Ravioli",es:"wta-sabalen-zhang-2026-08-06",cid:"0xe8364f07a56f87f316dde01b088fc3ce0c26bbf4a2d8cbf12c0c86a9f35fb919"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:13209.37,p:0.999,ts:1786055429,who:"Snappy-Basketball",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:40709.25,p:0.999,ts:1786055364,who:"Jolly-Grove",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"National Bank Open: Jiri Lehecka vs Alexander Blockx",o:"Alexander Blockx",side:"BUY",sz:118731.62,p:0.185,ts:1786055360,who:"Rash-Copying",es:"atp-lehecka-blockx-2026-08-06",cid:"0x50454af2389bdcab6394aae8e17f805342d355dbee4fbb1eca2d2a2fd101c7fb"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:11473.4,p:0.999,ts:1786055355,who:"Enchanting-Chasuble-Offer",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"BUY",sz:10643.57,p:0.983,ts:1786055229,who:"Frail-Possible",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"Washington Nationals vs. Philadelphia Phillies",o:"Philadelphia Phillies",side:"BUY",sz:17917.18,p:0.89,ts:1786055099,who:"Spectacular-Allegation-Understanding",es:"mlb-wsh-phi-2026-08-06",cid:"0x6d3915d2e5aba59d058874238319a7e83309aaeafbc2a389f5a95f4d3d8ebcd9"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"BUY",sz:65111.5,p:0.960,ts:1786054869,who:"Usable-Manufacturing",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Cameron Norrie",side:"SELL",sz:48605.63,p:0.906,ts:1786054812,who:"Rash-Copying",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"Will New York City FC win on 2026-08-06?",o:"No",side:"BUY",sz:26860.06,p:0.402,ts:1786054499,who:"Realistic-Chive-Tenet",es:"lec-nyc-san-2026-08-06",cid:"0x69dc57679851bb510838463919c018ff6f1a3b38e834ac4e41b6bd4263108c01"},
+ {t:"Valorant: Evil Geniuses vs FURIA — Map 2 Winner",o:"FURIA Esports",side:"BUY",sz:23142.62,p:0.505,ts:1786053980,who:"Guilty-Relief",es:"val-eg2-fur-2026-08-06",cid:"0x85e19414d4ea8763840ffe33760074dec38e3f4c6ce37a198e18ecd6fe08238d"},
+ {t:"National Bank Open: Marta Kostyuk vs Madison Keys",o:"Marta Kostyuk",side:"BUY",sz:13020,p:0.975,ts:1786053464,who:"Innocent-Grape",es:"wta-kostyuk-keys-2026-08-05",cid:"0x7882cff3a85d342a9e083eab8f2edacdac2729c0e4e32e9d22be40fea7acf6db"},
+ {t:"Spread: Portland Fire (-2.5)",o:"Toronto Tempo",side:"BUY",sz:51778.11,p:0.51,ts:1786052801,who:"Hearty-Steam",es:"wnba-tor-por-2026-08-06",cid:"0x3c874f3b94a32b374a526e7dd9957f0720f02c9bdc14f0a89d03d6a9c8f45518"},
+ {t:"National Bank Open: Cameron Norrie vs Alex de Minaur",o:"Alex de Minaur",side:"BUY",sz:81749.53,p:0.768,ts:1786052645,who:"Webbed-Myth",es:"atp-norrie-minaur-2026-08-06",cid:"0x60103a0f8a721a843b08c7d4cee854435624c3c0bd2e104fceb5e673b2a5c40f"},
+ {t:"Will CA Unión win on 2026-08-06?",o:"No",side:"BUY",sz:23818.2,p:0.61,ts:1786052172,who:"Powerful-Begonia",es:"arg-uni-lan-2026-08-06",cid:"0xf750e9479a0e198e4af8e202bbd4ae7cd77561d9c21b736f05df0e1b00764bb4"},
+ {t:"National Bank Open: Marta Kostyuk vs Madison Keys",o:"Marta Kostyuk",side:"BUY",sz:16000,p:0.8,ts:1786051841,who:"Improbable-Injunction-Carpet",es:"wta-kostyuk-keys-2026-08-05",cid:"0x7882cff3a85d342a9e083eab8f2edacdac2729c0e4e32e9d22be40fea7acf6db"}
+],
+odds:[
+ {away:"Los Angeles Angels",home:"Baltimore Orioles",mlA:132,mlH:-160,ou:9.5,oO:-115,oU:-105,start:"2026-08-06T16:35Z"},
+ {away:"Athletics",home:"Cincinnati Reds",mlA:138,mlH:-167,ou:9.5,oO:-105,oU:-115,start:"2026-08-06T16:40Z"},
+ {away:"New York Mets",home:"Cleveland Guardians",mlA:-114,mlH:-105,ou:7.5,oO:-119,oU:-101,start:"2026-08-06T17:10Z"},
+ {away:"Pittsburgh Pirates",home:"Milwaukee Brewers",mlA:118,mlH:-142,ou:7.5,oO:-118,oU:-102,start:"2026-08-06T18:10Z"},
+ {away:"Los Angeles Angels",home:"Miami Marlins",mlA:141,mlH:-171,ou:9.0,oO:100,oU:-120,start:"2026-08-07T23:10Z"}
+],
+histories:{
+ "13586434221502328963355232452739727278993305346004047680095622088479408284211":[[1785596410,0.5],[1785607210,0.5],[1785618015,0.5],[1785628815,0.5],[1785639620,0.46],[1785650427,0.465],[1785661215,0.465],[1785672013,0.465],[1785682831,0.465],[1785693614,0.46],[1785704416,0.46],[1785715212,0.46],[1785726011,0.46],[1785736815,0.47],[1785747612,0.47],[1785758412,0.49],[1785769212,0.595],[1785780011,0.66],[1785790821,0.5],[1785801615,0.635],[1785812411,0.635],[1785823229,0.63],[1785834012,0.63],[1785844812,0.63],[1785855612,0.63],[1785866411,0.655],[1785877217,0.69],[1785888015,0.705],[1785898816,0.705],[1785909623,0.705],[1785920415,0.705],[1785931215,0.705],[1785942011,0.705],[1785952826,0.705],[1785963613,0.725],[1785974415,0.745],[1785985212,0.755],[1785996012,0.755],[1786006815,0.755],[1786017621,0.755],[1786028422,0.755],[1786039212,0.755],[1786050014,0.755],[1786056912,0.915]],
+ "76937171036023799030865952666413116379809616275505361305662392099618226713940":[[1785596409,0.495],[1785607209,0.5],[1785618012,0.5],[1785628814,0.5],[1785639617,0.54],[1785650426,0.545],[1785661214,0.545],[1785672012,0.545],[1785682830,0.545],[1785693612,0.55],[1785704415,0.55],[1785715211,0.55],[1785726010,0.53],[1785736814,0.53],[1785747611,0.53],[1785758411,0.53],[1785769211,0.53],[1785780010,0.54],[1785790819,0.54],[1785801614,0.525],[1785812410,0.58],[1785823228,0.565],[1785834011,0.585],[1785844811,0.565],[1785855611,0.545],[1785866410,0.55],[1785877216,0.55],[1785888014,0.55],[1785898815,0.55],[1785909622,0.555],[1785920413,0.575],[1785931214,0.57],[1785942010,0.57],[1785952825,0.57],[1785963611,0.585],[1785974413,0.59],[1785985211,0.595],[1785996011,0.585],[1786006814,0.585],[1786017619,0.565],[1786028419,0.575],[1786039211,0.575],[1786050012,0.585],[1786056911,0.595]],
+ "101966254312574887653429106693383625561372303657564168471249623302915873571994":[[1785996007,0.645],[1786006810,0.625],[1786017610,0.635],[1786028407,0.635],[1786039207,0.655],[1786050007,0.655],[1786056909,0.855]]
+}
+};
+
+/* ============ STATE ============ */
+let MARKETS=[];            // flattened market rows
+let TRADES=[];             // whale trades
+let MODE="init";           // live | snapshot
+let selToken=null, selMarket=null, chartInterval="1w";
+let alerts=[], alertKeys=new Set();
+let prevPrices={};         // cid -> last price (for session-move alerts)
+let sortKey="v24", sortDir=-1;
+
+const $=id=>document.getElementById(id);
+const fmt$=n=>{ n=+n; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(n>=1e3)return "$"+(n/1e3).toFixed(1)+"k"; return "$"+n.toFixed(0); };
+const cents=p=>(p==null||isNaN(p))?"—":Math.round(p*100)+"¢";
+const signC=p=>{ if(p==null||isNaN(p))return "—"; const c=Math.round(p*100); return (c>0?"+":"")+c+"¢"; };
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ago=ts=>{ const s=Math.max(0,Math.floor(nowSec()-ts)); if(s<60)return s+"s ago"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
+function nowSec(){ return MODE==="snapshot" ? SNAP_TS : Date.now()/1000; }
+
+/* ============ DATA LOADING ============ */
+async function jget(url,timeout=12000){
+  const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),timeout);
+  try{ const r=await fetch(url,{signal:ctl.signal}); if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
+  finally{ clearTimeout(t); }
+}
+function flattenEvents(evs){
+  const rows=[];
+  for(const ev of evs){
+    const evTitle=ev.title, evSlug=ev.slug, sport=sportOf(ev.slug);
+    for(const m of (ev.markets||[])){
+      if(m.enableOrderBook===false) continue;
+      let out,px,tok;
+      try{ out=JSON.parse(m.outcomes||m.out||"[]"); }catch{ out=[]; }
+      try{ px=(JSON.parse(m.outcomePrices||m.px||"[]")).map(Number); }catch{ px=[]; }
+      try{ tok=JSON.parse(m.clobTokenIds||m.tok||"[]"); }catch{ tok=[]; }
+      if(out.length<2||tok.length<2) continue;
+      rows.push({
+        q:m.question||m.q, cid:m.conditionId||m.cid, evTitle, evSlug, sport,
+        out, px, tok,
+        bb:m.bestBid??m.bb, ba:m.bestAsk??m.ba, sp:m.spread??m.sp,
+        v24:+(m.volume24hr??m.v24??0), d1:m.oneDayPriceChange??m.d1, h1:m.oneHourPriceChange??m.h1,
+        end:m.endDate||m.end, last:m.lastTradePrice??m.last
+      });
+    }
+  }
+  rows.sort((a,b)=>b.v24-a.v24);
+  return rows;
+}
+async function loadMarkets(){
+  try{
+    const evs=await jget(`${GAMMA}/events?tag_slug=sports&active=true&closed=false&order=volume24hr&ascending=false&limit=40`);
+    if(!Array.isArray(evs)||!evs.length) throw new Error("empty");
+    MARKETS=flattenEvents(evs); setMode("live"); return true;
+  }catch(e){
+    if(MODE!=="live"){ // fall back only if we've never had live data
+      MARKETS=flattenEvents(SNAPSHOT.events.map(ev=>({title:ev.title,slug:ev.slug,markets:ev.markets.map(m=>({question:m.q,conditionId:m.cid,outcomes:m.out,outcomePrices:m.px,clobTokenIds:m.tok,bestBid:m.bb,bestAsk:m.ba,spread:m.sp,volume24hr:m.v24,oneDayPriceChange:m.d1,oneHourPriceChange:m.h1,endDate:m.end,lastTradePrice:m.last}))})));
+      setMode("snapshot");
+    }
+    return false;
+  }
+}
+async function loadWhales(){
+  const min=$("whalemin").value;
+  try{
+    const tr=await jget(`${DATA}/trades?filterType=CASH&filterAmount=${min}&limit=100&takerOnly=true`);
+    if(!Array.isArray(tr)) throw new Error("bad");
+    TRADES=tr.map(x=>({t:x.title,o:x.outcome,side:x.side,sz:+x.size,p:+x.price,ts:+x.timestamp,who:x.pseudonym||x.proxyWallet?.slice(0,8),wallet:x.proxyWallet,es:x.eventSlug,cid:x.conditionId}));
+    return true;
+  }catch(e){
+    if(MODE!=="live"){ TRADES=SNAPSHOT.trades.map(x=>({...x})); }
+    return false;
+  }
+}
+async function loadHistory(tokenId,interval){
+  const fid={ "1h":1, "6h":5, "1d":15, "1w":180, "1m":720 }[interval]||60;
+  try{
+    const j=await jget(`${CLOB}/prices-history?market=${tokenId}&interval=${interval}&fidelity=${fid}`);
+    return (j.history||[]).map(pt=>[pt.t,pt.p]);
+  }catch(e){
+    return SNAPSHOT.histories[tokenId]||null;
+  }
+}
+function setMode(m){
+  MODE=m;
+  const dot=$("statdot"), txt=$("stattext"), ban=$("banner");
+  if(m==="live"){ dot.className="dot live"; txt.textContent="LIVE · updated "+new Date().toLocaleTimeString(); ban.style.display="none"; }
+  else{ dot.className="dot snap"; txt.textContent="SNAPSHOT MODE";
+    ban.style.display="block";
+    ban.innerHTML="⚠ Live fetch unavailable in this viewer — showing a data snapshot from <b>Aug 6, 2026 22:56 UTC</b>. Download the HTML file and open it in your browser (Chrome/Safari) for live streaming data.";
+  }
+}
+
+/* ============ FILTER + DERIVED ============ */
+function nearResolved(m){ const p=m.px[0]; return p!=null && (p>=0.97||p<=0.03); }
+function whaleCidSet(){ const s=new Set(); for(const t of TRADES) s.add(t.cid); return s; }
+function sportsTrades(){
+  const only=$("sportsonly").checked;
+  if(!only) return TRADES;
+  const cids=new Set(MARKETS.map(m=>m.cid));
+  return TRADES.filter(t=>cids.has(t.cid)||sportOf(t.es)!=="Other");
+}
+function visibleMarkets(){
+  const q=$("q").value.trim().toLowerCase(), sp=$("sportsel").value, hide=$("hideres").checked;
+  let rows=MARKETS.filter(m=>{
+    if(hide&&nearResolved(m)) return false;
+    if(sp&&m.sport!==sp) return false;
+    if(q&&!(m.q+" "+m.evTitle).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  rows=[...rows].sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(sortKey==="px0"){ av=a.px[0]; bv=b.px[0]; }
+    av=(av==null||isNaN(av))?-Infinity:+av; bv=(bv==null||isNaN(bv))?-Infinity:+bv;
+    return (av-bv)*(-sortDir);
+  });
+  return rows;
+}
+
+/* ============ RENDER: TILES ============ */
+function renderTiles(){
+  const st=sportsTrades();
+  const vol=MARKETS.reduce((s,m)=>s+m.v24,0);
+  const hr=nowSec()-3600;
+  const wh1=st.filter(t=>t.ts>=hr);
+  const whNotional=wh1.reduce((s,t)=>s+t.sz*t.p,0);
+  let mover=null;
+  for(const m of MARKETS){ if(nearResolved(m))continue; const d=Math.abs(m.d1??0); if(!mover||d>Math.abs(mover.d1??0)) mover=m; }
+  $("tiles").innerHTML=`
+    <div class="tile"><div class="k">Sports markets tracked</div><div class="v">${MARKETS.length}</div><div class="d">${new Set(MARKETS.map(m=>m.evSlug)).size} events · top 40 by 24h volume</div></div>
+    <div class="tile"><div class="k">24h volume (tracked)</div><div class="v">${fmt$(vol)}</div><div class="d">across loaded sports markets</div></div>
+    <div class="tile"><div class="k">Whale trades · last hour</div><div class="v">${wh1.length}</div><div class="d">${fmt$(whNotional)} notional ≥ $${(+$("whalemin").value/1000)}k</div></div>
+    <div class="tile"><div class="k">Biggest 24h mover</div><div class="v">${mover?signC(mover.d1):"—"}</div><div class="d">${mover?esc(mover.q):""}</div></div>`;
+}
+
+/* ============ RENDER: MARKETS TABLE ============ */
+function renderMarkets(){
+  const rows=visibleMarkets();
+  $("mktcount").textContent=rows.length+" markets";
+  if(!rows.length){ $("mkt-table").innerHTML=`<div class="empty">No markets match your filters.</div>`; return; }
+  const wcids=whaleCidSet();
+  const arrow=k=>sortKey===k?(sortDir<0?" ↓":" ↑"):"";
+  let h=`<table><thead><tr>
+    <th data-k="q">Market</th>
+    <th class="num" data-k="px0">Price${arrow("px0")}</th>
+    <th class="num" data-k="h1">1h Δ${arrow("h1")}</th>
+    <th class="num" data-k="d1">24h Δ${arrow("d1")}</th>
+    <th class="num" data-k="sp">Spread${arrow("sp")}</th>
+    <th class="num" data-k="v24">24h Vol${arrow("v24")}</th>
+    <th data-k="end">Ends</th></tr></thead><tbody>`;
+  for(const m of rows){
+    const badges=[];
+    if(Math.abs(m.d1??0)>=0.10||Math.abs(m.h1??0)>=0.05) badges.push('<span class="badge mover">MOVER</span>');
+    if(wcids.has(m.cid)) badges.push('<span class="badge whale">WHALE</span>');
+    if((m.sp??0)>=0.03) badges.push('<span class="badge thin">THIN</span>');
+    const endTxt=m.end?new Date(m.end).toLocaleDateString(undefined,{month:"short",day:"numeric"}):"—";
+    h+=`<tr class="click" data-tok="${esc(m.tok[0])}" data-cid="${esc(m.cid)}">
+      <td><div class="mkt-q">${esc(m.q)}${badges.join("")}</div>
+          <div class="mkt-e"><span class="badge sport">${esc(m.sport)}</span> ${esc(m.out[0])} vs ${esc(m.out[1])}</div></td>
+      <td class="num"><b>${cents(m.px[0])}</b> <span class="mkt-e">${esc(m.out[0])}</span></td>
+      <td class="num ${m.h1>0?"pos":m.h1<0?"neg":""}">${signC(m.h1)}</td>
+      <td class="num ${m.d1>0?"pos":m.d1<0?"neg":""}">${signC(m.d1)}</td>
+      <td class="num">${m.sp!=null?Math.round(m.sp*100)+"¢":"—"}</td>
+      <td class="num">${fmt$(m.v24)}</td>
+      <td>${endTxt}</td></tr>`;
+  }
+  h+="</tbody></table>";
+  $("mkt-table").innerHTML=h;
+  $("mkt-table").querySelectorAll("tr.click").forEach(tr=>tr.addEventListener("click",()=>{
+    openChart(tr.dataset.tok, tr.dataset.cid);
+  }));
+  $("mkt-table").querySelectorAll("thead th").forEach(th=>th.addEventListener("click",()=>{
+    const k=th.dataset.k; if(!k)return;
+    if(sortKey===k) sortDir*=-1; else{ sortKey=k; sortDir=-1; }
+    renderMarkets();
+  }));
+}
+
+/* ============ RENDER: WHALES ============ */
+function renderWhales(){
+  const st=sportsTrades().slice().sort((a,b)=>b.ts-a.ts);
+  $("whalecount").textContent=st.length+" trades loaded";
+  // consensus: net notional by cid+outcome
+  const agg={};
+  for(const tr of st){
+    const key=tr.cid+"|"+tr.o;
+    agg[key]=agg[key]||{t:tr.t,o:tr.o,net:0,n:0,buys:0,sells:0};
+    const usd=tr.sz*tr.p, sign=tr.side==="BUY"?1:-1;
+    agg[key].net+=sign*usd; agg[key].n++;
+    if(sign>0)agg[key].buys+=usd; else agg[key].sells+=usd;
+  }
+  const top=Object.values(agg).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net)).slice(0,6);
+  let ch=`<table><thead><tr><th>Whale consensus (net flow, loaded trades)</th><th class="num">Net</th><th class="num">Trades</th></tr></thead><tbody>`;
+  for(const r of top){
+    ch+=`<tr><td><div class="mkt-q">${esc(r.o)}</div><div class="mkt-e">${esc(r.t)}</div></td>
+      <td class="num ${r.net>0?"pos":"neg"}"><b>${r.net>0?"+":"−"}${fmt$(Math.abs(r.net))}</b></td>
+      <td class="num">${r.n}</td></tr>`;
+  }
+  ch+="</tbody></table>";
+  $("consensus").innerHTML= top.length? ch : "";
+  if(!st.length){ $("whale-table").innerHTML=`<div class="empty">No whale trades at this size filter.</div>`; return; }
+  let h=`<table><thead><tr><th>Time</th><th>Trader</th><th>Side</th><th>Position</th><th class="num">Price</th><th class="num">Notional</th></tr></thead><tbody>`;
+  for(const tr of st.slice(0,60)){
+    const usd=tr.sz*tr.p;
+    const link=tr.wallet?`<a href="https://polymarket.com/profile/${esc(tr.wallet)}" target="_blank" rel="noopener">${esc(tr.who)}</a>`:esc(tr.who);
+    h+=`<tr><td class="num" style="text-align:left">${ago(tr.ts)}</td>
+      <td>${link}</td>
+      <td class="${tr.side==="BUY"?"side-b":"side-s"}">${tr.side}</td>
+      <td><div class="mkt-q">${esc(tr.o)}</div><div class="mkt-e">${esc(tr.t)}</div></td>
+      <td class="num">${cents(tr.p)}</td>
+      <td class="num"><b>${fmt$(usd)}</b></td></tr>`;
+  }
+  h+="</tbody></table>";
+  $("whale-table").innerHTML=h;
+}
+
+/* ============ CHART ============ */
+function populateChartSel(){
+  const sel=$("chartsel"); const cur=sel.value;
+  sel.innerHTML=`<option value="">— choose a market —</option>`+
+    MARKETS.slice(0,60).map(m=>
+      m.tok.slice(0,2).map((tk,i)=>`<option value="${esc(tk)}|${esc(m.cid)}">${esc(m.q)} — ${esc(m.out[i])}</option>`).join("")
+    ).join("");
+  if(cur) sel.value=cur;
+}
+function openChart(tok,cid){
+  selToken=tok; selMarket=MARKETS.find(m=>m.cid===cid)||null;
+  document.querySelector('nav button[data-tab="charts"]').click();
+  $("chartsel").value=tok+"|"+cid;
+  drawChart();
+}
+async function drawChart(){
+  const box=$("chart");
+  if(!selToken||!selMarket){ box.innerHTML=`<div class="empty">Pick a market above.</div>`; return; }
+  const oIdx=Math.max(0,selMarket.tok.indexOf(selToken));
+  $("charttitle").textContent=selMarket.q+" — "+selMarket.out[oIdx];
+  box.innerHTML=`<div class="empty">Loading history…</div>`;
+  const data=await loadHistory(selToken,chartInterval);
+  if(!data||data.length<2){ box.innerHTML=`<div class="empty">No price history available${MODE==="snapshot"?" in snapshot mode for this market — snapshot includes charts for Phillies ML, Braves ML and Lehecka ML":""}.</div>`; $("chartcur").textContent=""; $("chartlegend").innerHTML=""; return; }
+  const last=data[data.length-1][1];
+  $("chartcur").textContent=cents(last);
+  // whale markers for this market
+  const marks=sportsTrades().filter(t=>t.cid===selMarket.cid && t.ts>=data[0][0] && t.ts<=data[data.length-1][0]);
+  renderSVG(box,data,marks);
+  $("chartlegend").innerHTML=`<span><span class="sw" style="background:var(--s1)"></span>${esc(selMarket.out[oIdx])} price</span>`+
+    (marks.length?`<span><span class="sw" style="background:var(--s2);border-radius:50%"></span>whale trades (${marks.length})</span>`:"")+
+    `<span style="color:var(--muted)">range: ${cents(Math.min(...data.map(d=>d[1])))} – ${cents(Math.max(...data.map(d=>d[1])))}</span>`;
+}
+function renderSVG(box,data,marks){
+  const W=Math.max(560,box.clientWidth||860), H=300, padL=44, padR=14, padT=14, padB=26;
+  const xs=data.map(d=>d[0]), ys=data.map(d=>d[1]);
+  const x0=xs[0], x1=xs[xs.length-1];
+  let y0=Math.min(...ys), y1=Math.max(...ys);
+  const yp=Math.max(0.02,(y1-y0)*0.12); y0=Math.max(0,y0-yp); y1=Math.min(1,y1+yp);
+  const X=t=>padL+(t-x0)/(x1-x0||1)*(W-padL-padR);
+  const Y=p=>padT+(1-(p-y0)/(y1-y0||1))*(H-padT-padB);
+  // gridlines: 4 y ticks
+  let g="";
+  for(let i=0;i<=4;i++){
+    const p=y0+(y1-y0)*i/4, y=Y(p);
+    g+=`<line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>
+        <text x="${padL-6}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="11" style="font-variant-numeric:tabular-nums">${Math.round(p*100)}¢</text>`;
+  }
+  // x ticks: 4
+  const spanS=x1-x0;
+  for(let i=0;i<=3;i++){
+    const t=x0+spanS*i/3, x=X(t);
+    const d=new Date(t*1000);
+    const lab=spanS>3*86400? d.toLocaleDateString(undefined,{month:"short",day:"numeric"}) : d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+    g+=`<text x="${x}" y="${H-8}" text-anchor="middle" fill="var(--muted)" font-size="11">${lab}</text>`;
+  }
+  const path=data.map((d,i)=>(i?"L":"M")+X(d[0]).toFixed(1)+","+Y(d[1]).toFixed(1)).join(" ");
+  let mk="";
+  for(const m of marks){
+    let best=data[0]; for(const d of data){ if(Math.abs(d[0]-m.ts)<Math.abs(best[0]-m.ts)) best=d; }
+    mk+=`<circle cx="${X(m.ts).toFixed(1)}" cy="${Y(best[1]).toFixed(1)}" r="4" fill="var(--s2)" stroke="var(--surface)" stroke-width="2"><title>${esc(m.side)} ${esc(m.o)} ${fmt$(m.sz*m.p)} @ ${cents(m.p)}</title></circle>`;
+  }
+  box.innerHTML=`<svg id="svgc" width="100%" viewBox="0 0 ${W} ${H}" style="display:block">
+    ${g}
+    <line x1="${padL}" x2="${W-padR}" y1="${H-padB}" y2="${H-padB}" stroke="var(--axis)" stroke-width="1"/>
+    <path d="${path}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
+    ${mk}
+    <line id="xh" x1="0" x2="0" y1="${padT}" y2="${H-padB}" stroke="var(--ink-2)" stroke-width="1" stroke-dasharray="3,3" style="display:none"/>
+    <circle id="xhdot" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2" style="display:none"/>
+    <rect x="${padL}" y="${padT}" width="${W-padL-padR}" height="${H-padT-padB}" fill="transparent" id="hover"/>
+  </svg>`;
+  const svg=$("svgc"), hov=$("hover"), xh=$("xh"), dot=$("xhdot"), tip=$("tooltip");
+  hov.addEventListener("mousemove",ev=>{
+    const r=svg.getBoundingClientRect();
+    const fx=(ev.clientX-r.left)*(W/r.width);
+    const t=x0+(fx-padL)/(W-padL-padR)*(x1-x0);
+    let best=data[0]; for(const d of data){ if(Math.abs(d[0]-t)<Math.abs(best[0]-t)) best=d; }
+    const bx=X(best[0]), by=Y(best[1]);
+    xh.style.display="block"; xh.setAttribute("x1",bx); xh.setAttribute("x2",bx);
+    dot.style.display="block"; dot.setAttribute("cx",bx); dot.setAttribute("cy",by);
+    tip.style.display="block";
+    tip.innerHTML=`<b>${cents(best[1])}</b> · ${new Date(best[0]*1000).toLocaleString(undefined,{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`;
+    const tw=tip.offsetWidth;
+    tip.style.left=Math.min(window.innerWidth-tw-12, ev.clientX+14)+"px";
+    tip.style.top=(ev.clientY-36)+"px";
+  });
+  hov.addEventListener("mouseleave",()=>{ xh.style.display="none"; dot.style.display="none"; tip.style.display="none"; });
+}
+
+/* ============ EDGE (fair-odds model) ============ */
+let BOOKGAMES=[];         // [{away,home,mlA,mlH,ou,oO,oU,src,books}]
+let lastEspn=0, ODDSKEY="";
+const norm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const nameEq=(a,b)=>{ a=norm(a); b=norm(b); return a===b||(a.length>3&&b.length>3&&(a.includes(b)||b.includes(a))); };
+const amProb=ml=>{ ml=parseFloat(ml); if(isNaN(ml))return null; return ml<0? -ml/(-ml+100) : 100/(ml+100); };
+function devig(pA,pB){ const s=pA+pB; if(!s)return null; return [pA/s,pB/s]; }
+function ymd(d){ return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0"); }
+
+async function loadEspnOdds(force){
+  if(!force && Date.now()-lastEspn<5*60*1000) return;
+  const leagues=["baseball/mlb","basketball/nba","basketball/wnba","football/nfl","hockey/nhl"];
+  const days=[new Date(),new Date(Date.now()+86400e3)];
+  const out=[];
+  let ok=false;
+  const jobs=[];
+  for(const lg of leagues) for(const d of days)
+    jobs.push(jget(`https://site.api.espn.com/apis/site/v2/sports/${lg}/scoreboard?dates=${ymd(d)}&limit=40`,6000).then(j=>({j}),e=>({e})));
+  const results=await Promise.all(jobs);
+  for(const r of results){
+      {
+        const j=r.j; if(!j){ continue; }
+        ok=true;
+        for(const ev of (j.events||[])){
+          const c=(ev.competitions||[])[0]; if(!c)continue;
+          if(c.status?.type?.state && c.status.type.state!=="pre") continue;
+          const comp=c.competitors||[];
+          const home=comp.find(x=>x.homeAway==="home")?.team?.displayName;
+          const away=comp.find(x=>x.homeAway==="away")?.team?.displayName;
+          const o=(c.odds||[])[0]; if(!home||!away||!o)continue;
+          const mlA=o.awayTeamOdds?.moneyLine??o.awayTeamOdds?.current?.moneyLine?.american;
+          const mlH=o.homeTeamOdds?.moneyLine??o.homeTeamOdds?.current?.moneyLine?.american;
+          out.push({away,home,mlA,mlH,ou:o.overUnder,oO:o.overOdds,oU:o.underOdds,src:(o.provider?.name||"book"),books:1,start:ev.date});
+        }
+      }
+  }
+  if(ok){ BOOKGAMES=out; lastEspn=Date.now(); }
+  else if(!BOOKGAMES.length){ BOOKGAMES=SNAPSHOT.odds.map(g=>({...g,src:"DraftKings (snapshot)",books:1})); }
+}
+async function loadOddsApi(){
+  const st=$("oddsapistatus");
+  if(!ODDSKEY){ st.textContent="No key set."; return; }
+  st.textContent="Fetching odds…";
+  try{
+    const sports=await jget(`https://api.the-odds-api.com/v4/sports/?apiKey=${encodeURIComponent(ODDSKEY)}`);
+    const want=new Set(["baseball_mlb","basketball_nba","basketball_wnba","americanfootball_nfl","icehockey_nhl"]);
+    const keys=sports.filter(s=>s.active&&(want.has(s.key)||s.key.startsWith("tennis_"))).map(s=>s.key).slice(0,10);
+    const merged=[];
+    for(const k of keys){
+      try{
+        const evs=await jget(`https://api.the-odds-api.com/v4/sports/${k}/odds/?apiKey=${encodeURIComponent(ODDSKEY)}&regions=us&markets=h2h&oddsFormat=decimal`);
+        for(const ev of evs){
+          const probs=[]; // devigged [pHome,pAway] per book
+          for(const bk of (ev.bookmakers||[])){
+            const m=(bk.markets||[]).find(x=>x.key==="h2h"); if(!m)continue;
+            const oh=m.outcomes.find(x=>x.name===ev.home_team), oa=m.outcomes.find(x=>x.name===ev.away_team);
+            if(!oh||!oa||!oh.price||!oa.price)continue;
+            const dv=devig(1/oh.price,1/oa.price); if(dv)probs.push(dv);
+          }
+          if(!probs.length)continue;
+          const pH=probs.reduce((s,p)=>s+p[0],0)/probs.length, pA=probs.reduce((s,p)=>s+p[1],0)/probs.length;
+          merged.push({away:ev.away_team,home:ev.home_team,fairA:pA,fairH:pH,src:probs.length+" books",books:probs.length,start:ev.commence_time});
+        }
+      }catch(e){}
+    }
+    if(merged.length){
+      // odds-api games take precedence: prepend so matcher finds them first
+      BOOKGAMES=[...merged,...BOOKGAMES.filter(g=>!merged.some(m=>nameEq(m.home,g.home)&&nameEq(m.away,g.away)))];
+      st.textContent=`Connected — ${merged.length} games from multi-book consensus.`;
+    } else st.textContent="Key worked but no games returned (check quota / season).";
+    renderEdge(); evalAlerts();
+  }catch(e){ st.textContent="Fetch failed — bad key, quota exhausted, or network blocked here."; }
+}
+function fairFor(game){
+  if(game.fairA!=null) return [game.fairA,game.fairH]; // odds-api consensus [away,home]
+  const pA=amProb(game.mlA), pH=amProb(game.mlH);
+  if(pA==null||pH==null) return null;
+  const dv=devig(pA,pH); return dv?[dv[0],dv[1]]:null;
+}
+function computeEdges(){
+  const rows=[];
+  for(const m of MARKETS){
+    if(nearResolved(m)) continue;
+    const ask=[m.ba, (m.bb!=null?1-m.bb:null)];
+    if(ask[0]==null&&ask[1]==null) continue;
+    const ouMatch=m.q.match(/O\/U (\d+(?:\.\d+)?)/);
+    // teams for this market: ML → outcomes; O/U → event title "A vs B"
+    let tA,tB;
+    if(ouMatch){ const parts=m.evTitle.split(/ vs\.? /i); if(parts.length<2)continue; tA=parts[0].replace(/^.*: /,""); tB=parts[1]; }
+    else { tA=m.out[0]; tB=m.out[1]; }
+    const g=BOOKGAMES.find(g=>(nameEq(g.away,tA)&&nameEq(g.home,tB))||(nameEq(g.away,tB)&&nameEq(g.home,tA)));
+    if(!g) continue;
+    let fair; // aligned to m.out order
+    if(ouMatch){
+      if(g.ou==null||+ouMatch[1]!==+g.ou||g.oO==null||g.oU==null) continue; // line must match exactly
+      const dv=devig(amProb(g.oO)??0,amProb(g.oU)??0); if(!dv)continue;
+      fair=[dv[0],dv[1]]; // [Over, Under]
+    } else {
+      const f=fairFor(g); if(!f)continue; // f = [away,home]
+      const awayIs0=nameEq(g.away,m.out[0]);
+      fair=awayIs0?[f[0],f[1]]:[f[1],f[0]];
+    }
+    // best buy side
+    let best=null;
+    for(let i=0;i<2;i++){
+      if(ask[i]==null||ask[i]<=0)continue;
+      const edge=fair[i]-ask[i], ev=(fair[i]/ask[i]-1)*100;
+      if(!best||edge>best.edge) best={i,edge,ev,fair:fair[i],ask:ask[i]};
+    }
+    if(best) rows.push({m,g,...best,side:m.out[best.i]});
+  }
+  rows.sort((a,b)=>b.edge-a.edge);
+  return rows;
+}
+function renderEdge(){
+  const rows=computeEdges();
+  const minE=(+$("minedge").value||0)/100, showAll=$("showallmatched").checked;
+  const shown=showAll?rows:rows.filter(r=>r.edge>=minE);
+  $("edgestatus").textContent=`${rows.length} Polymarket markets matched to ${BOOKGAMES.length} book games · ${rows.filter(r=>r.edge>=minE).length} above threshold`;
+  if(!shown.length){
+    $("edge-table").innerHTML=`<div class="empty">${BOOKGAMES.length?
+      "No matched markets clear the edge threshold right now. That's the normal state — real edges are rare and close fast. Check back near game time, when books and Polymarket diverge most.":
+      "No sportsbook odds loaded. ESPN odds appear pre-game only (they vanish once games start)."}</div>`;
+    return;
+  }
+  let h=`<table><thead><tr><th>Market</th><th>Buy side</th><th class="num">Poly ask</th><th class="num">Fair (book)</th><th class="num">Edge</th><th class="num">EV / $100</th><th>Source</th></tr></thead><tbody>`;
+  for(const r of shown){
+    const hot=r.edge>=minE;
+    h+=`<tr class="click" data-tok="${esc(r.m.tok[r.i])}" data-cid="${esc(r.m.cid)}">
+      <td><div class="mkt-q">${esc(r.m.q)}${hot?'<span class="badge mover">EDGE</span>':''}</div><div class="mkt-e"><span class="badge sport">${esc(r.m.sport)}</span></div></td>
+      <td><b>${esc(r.side)}</b></td>
+      <td class="num">${cents(r.ask)}</td>
+      <td class="num">${(r.fair*100).toFixed(1)}¢</td>
+      <td class="num ${r.edge>0?"pos":"neg"}"><b>${(r.edge>0?"+":"")+(r.edge*100).toFixed(1)}¢</b></td>
+      <td class="num ${r.ev>0?"pos":"neg"}">${(r.ev>0?"+$":"−$")+Math.abs(r.ev).toFixed(1)}</td>
+      <td class="mkt-e">${esc(r.g.src)}</td></tr>`;
+  }
+  h+="</tbody></table>";
+  $("edge-table").innerHTML=h;
+  $("edge-table").querySelectorAll("tr.click").forEach(tr=>tr.addEventListener("click",()=>openChart(tr.dataset.tok,tr.dataset.cid)));
+}
+
+/* ============ TOP PICKS ============ */
+function computePicks(){
+  const edges=computeEdges();                       // best-side edge rows
+  const eByCid=new Map(edges.map(r=>[r.m.cid,r]));
+  const st=sportsTrades();
+  const net={};                                     // cid|outcome -> net $ flow
+  for(const tr of st){ const k=tr.cid+"|"+tr.o; net[k]=(net[k]||0)+(tr.side==="BUY"?1:-1)*tr.sz*tr.p; }
+  const picks=[];
+  for(const m of MARKETS){
+    if(nearResolved(m)) continue;
+    const ask=[m.ba, m.bb!=null?1-m.bb:null];
+    let best=null;
+    for(let i=0;i<2;i++){
+      if(ask[i]==null||ask[i]<=0.03||ask[i]>=0.97) continue;
+      // book edge for this side (derive the off-side from 1 - fair)
+      const er=eByCid.get(m.cid);
+      let edgeC=null;
+      if(er) edgeC=(er.i===i ? er.edge : (1-er.fair)-ask[i])*100;
+      const adv=(net[m.cid+"|"+m.out[i]]||0)-(net[m.cid+"|"+m.out[1-i]]||0);
+      const hasEdge=edgeC!=null&&edgeC>=1, hasWhale=adv>=10000;
+      if(!hasEdge&&!hasWhale) continue;             // no directional signal → no pick, ever
+      let score=0; const why=[];
+      if(edgeC!=null&&edgeC>0) score+=Math.min(edgeC,10)*1.2;
+      if(hasEdge) why.push([`+${edgeC.toFixed(1)}¢ vs ${er.g.src}`,"mover"]);
+      else if(edgeC!=null&&edgeC<=-1){ score-=Math.min(-edgeC,6); why.push([`${edgeC.toFixed(1)}¢ vs books`,"thin"]); }
+      if(hasWhale){ score+=Math.min(adv/20000,5); why.push([`+${fmt$(adv)} net whale flow`,"whale"]); }
+      if(hasEdge&&hasWhale){ score+=3; why.push(["edge + whales agree","good"]); }
+      if((m.sp??0)>=0.03){ score-=2; why.push(["thin book","thin"]); }
+      if(score<=0) continue;
+      if(!best||score>best.score) best={i,score,why,ask:ask[i]};
+    }
+    if(best) picks.push({m,...best,side:m.out[best.i]});
+  }
+  picks.sort((a,b)=>b.score-a.score);
+  return picks.slice(0,5);
+}
+function renderPicks(){
+  const picks=computePicks();
+  const box=$("picks"), sub=$("pickssub");
+  if(!picks.length){
+    sub.textContent="";
+    box.innerHTML=`<div class="empty" style="grid-column:1/-1">No markets have a directional signal right now (book edge ≥1¢ or net whale flow ≥$10k). This list never pads — check back closer to game time.</div>`;
+    return;
+  }
+  sub.textContent=picks.length<5?`only ${picks.length} qualify right now — this list doesn't pad to 5`:
+    "ranked by signal score: book edge + whale flow + confluence − illiquidity";
+  box.innerHTML=picks.map((p,ix)=>`
+    <div class="pick" data-tok="${esc(p.m.tok[p.i])}" data-cid="${esc(p.m.cid)}">
+      <div class="rank">#${ix+1}</div>
+      <div class="side">${esc(p.side)} <span class="px">@ ${cents(p.ask)}</span></div>
+      <div class="mq">${esc(p.m.q)} · <span class="badge sport">${esc(p.m.sport)}</span></div>
+      <div class="chips">${p.why.map(w=>`<span class="badge ${w[1]}">${esc(w[0])}</span>`).join("")}</div>
+      <div class="scorebar"><i style="width:${Math.min(100,p.score/16*100).toFixed(0)}%"></i></div>
+      <div class="sc">signal score ${p.score.toFixed(1)}</div>
+    </div>`).join("");
+  box.querySelectorAll(".pick").forEach(el=>el.addEventListener("click",()=>openChart(el.dataset.tok,el.dataset.cid)));
+}
+
+/* ============ ALERTS ============ */
+function pushAlert(key,ico,txt,ts){
+  if(alertKeys.has(key)) return;
+  alertKeys.add(key);
+  alerts.unshift({ico,txt,ts:ts??nowSec()});
+  if(alerts.length>80) alerts.pop();
+}
+function evalAlerts(){
+  const rd1=(+$("r-d1").value||10)/100, rh1=(+$("r-h1").value||5)/100;
+  const rwsz=+$("r-wsz").value||25000, rclu=+$("r-clu").value||3;
+  for(const m of MARKETS){
+    if(nearResolved(m)) continue;
+    if(m.d1!=null&&Math.abs(m.d1)>=rd1) pushAlert("d1|"+m.cid+"|"+Math.round(m.d1*100),"📈",`<b>${esc(m.q)}</b> moved <b class="${m.d1>0?"pos":"neg"}">${signC(m.d1)}</b> in 24h (now ${cents(m.px[0])} ${esc(m.out[0])})`);
+    if(m.h1!=null&&Math.abs(m.h1)>=rh1) pushAlert("h1|"+m.cid+"|"+Math.round(m.h1*100),"⚡",`<b>${esc(m.q)}</b> moved <b class="${m.h1>0?"pos":"neg"}">${signC(m.h1)}</b> in the last hour`);
+    // session move: compare to previously seen price
+    const prev=prevPrices[m.cid];
+    if(prev!=null&&Math.abs(m.px[0]-prev)>=0.03) pushAlert("live|"+m.cid+"|"+Math.round(m.px[0]*100),"🔔",`<b>${esc(m.q)}</b> moved ${signC(m.px[0]-prev)} since you opened this page (${cents(prev)} → ${cents(m.px[0])})`);
+    prevPrices[m.cid]=m.px[0];
+  }
+  const st=sportsTrades();
+  for(const tr of st){
+    const usd=tr.sz*tr.p;
+    if(usd>=rwsz) pushAlert("w|"+tr.ts+"|"+tr.cid+"|"+Math.round(usd),"🐋",`<b>${fmt$(usd)}</b> ${tr.side==="BUY"?'<span class="side-b">BUY</span>':'<span class="side-s">SELL</span>'} <b>${esc(tr.o)}</b> @ ${cents(tr.p)} — ${esc(tr.t)} <span class="mkt-e">(${esc(tr.who)})</span>`,tr.ts);
+  }
+  const byCid={};
+  for(const tr of st){ byCid[tr.cid]=byCid[tr.cid]||{n:0,t:tr.t,usd:0}; byCid[tr.cid].n++; byCid[tr.cid].usd+=tr.sz*tr.p; }
+  for(const [cid,v] of Object.entries(byCid)){
+    if(v.n>=rclu) pushAlert("c|"+cid+"|"+v.n,"🎯",`Whale cluster: <b>${v.n} large trades</b> (${fmt$(v.usd)} total) on <b>${esc(v.t)}</b>`);
+  }
+  const redge=(+$("r-edge").value||4)/100;
+  for(const r of computeEdges()){
+    if(r.edge>=redge) pushAlert("e|"+r.m.cid+"|"+r.i+"|"+Math.round(r.edge*100),"💡",`Book edge: buy <b>${esc(r.side)}</b> @ ${cents(r.ask)} — fair ${(r.fair*100).toFixed(1)}¢ per ${esc(r.g.src)} (<b class="pos">+${(r.edge*100).toFixed(1)}¢</b>) — ${esc(r.m.q)}`);
+  }
+  renderAlerts();
+}
+function renderAlerts(){
+  alerts.sort((a,b)=>b.ts-a.ts);
+  const c=$("alertcount");
+  c.style.display=alerts.length?"inline-block":"none"; c.textContent=alerts.length;
+  $("alertlist").innerHTML = alerts.length
+    ? alerts.map(a=>`<div class="alert-item"><span class="ico">${a.ico}</span><span>${a.txt}</span><span class="when">${ago(a.ts)}</span></div>`).join("")
+    : `<div class="empty">No alerts yet. Rules are evaluated on every refresh while the page is open.</div>`;
+}
+
+/* ============ TABS + WIRING ============ */
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id==="tab-"+b.dataset.tab));
+}));
+$("ranges").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+  chartInterval=b.dataset.r;
+  $("ranges").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  drawChart();
+}));
+$("chartsel").addEventListener("change",e=>{
+  const v=e.target.value; if(!v){selToken=null;selMarket=null;drawChart();return;}
+  const [tok,cid]=v.split("|"); selToken=tok; selMarket=MARKETS.find(m=>m.cid===cid)||null; drawChart();
+});
+["q","sportsel","hideres"].forEach(id=>$(id).addEventListener("input",renderMarkets));
+$("whalemin").addEventListener("change",async()=>{ await loadWhales(); renderAll(); });
+$("sportsonly").addEventListener("change",renderAll);
+["r-d1","r-h1","r-wsz","r-clu","r-edge"].forEach(id=>$(id).addEventListener("change",()=>{ alertKeys.clear(); alerts=[]; evalAlerts(); }));
+$("refreshbtn").addEventListener("click",refresh);
+$("minedge").addEventListener("input",renderEdge);
+$("showallmatched").addEventListener("change",renderEdge);
+$("oddsconnect").addEventListener("click",()=>{ ODDSKEY=$("oddskey").value.trim(); loadOddsApi(); });
+
+function renderAll(){
+  // sport dropdown
+  const sel=$("sportsel"), cur=sel.value;
+  const sports=[...new Set(MARKETS.map(m=>m.sport))].sort();
+  sel.innerHTML=`<option value="">All sports</option>`+sports.map(s=>`<option ${s===cur?"selected":""}>${esc(s)}</option>`).join("");
+  renderTiles(); renderPicks(); renderMarkets(); renderEdge(); renderWhales(); populateChartSel(); evalAlerts();
+}
+async function refresh(){
+  await Promise.all([loadMarkets(),loadWhales()]);
+  renderAll();  // paint immediately; odds re-render when they land
+  loadEspnOdds(false).then(()=>{ renderEdge(); renderPicks(); evalAlerts(); });
+}
+let mktTimer=null, whTimer=null;
+function startTimers(){
+  stopTimers();
+  mktTimer=setInterval(async()=>{ if(document.hidden)return; await loadMarkets(); renderAll(); },REFRESH_MS);
+  whTimer=setInterval(async()=>{ if(document.hidden)return; await loadWhales(); renderTiles(); renderPicks(); renderWhales(); evalAlerts(); },WHALE_MS);
+}
+function stopTimers(){ if(mktTimer)clearInterval(mktTimer); if(whTimer)clearInterval(whTimer); }
+
+(async function init(){
+  await refresh();
+  if(MODE==="live") startTimers();
+})();
+</script>
+</body>
+</html>

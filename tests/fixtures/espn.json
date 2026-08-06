@@ -1,0 +1,4 @@
+{"events":[{"date":"2026-08-07T23:10Z","competitions":[{"status":{"type":{"state":"pre"}},
+ "competitors":[{"homeAway":"home","team":{"displayName":"Miami Marlins"}},{"homeAway":"away","team":{"displayName":"Los Angeles Angels"}}],
+ "odds":[{"provider":{"name":"DraftKings"},"overUnder":9.0,"overOdds":100,"underOdds":-120,
+  "awayTeamOdds":{"moneyLine":141},"homeTeamOdds":{"moneyLine":-171}}]}]}]}

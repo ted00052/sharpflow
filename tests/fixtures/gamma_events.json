@@ -1,0 +1,7 @@
+[{"title":"Los Angeles Angels vs. Miami Marlins","slug":"mlb-laa-mia-2026-08-07","markets":[
+ {"question":"Los Angeles Angels vs. Miami Marlins","conditionId":"0x1834230745e97fd13fd6417f8e598f6d9b0c02bab0e15ba8838c84284d25b442",
+  "outcomes":"[\"Los Angeles Angels\", \"Miami Marlins\"]","clobTokenIds":"[\"32342878120901228689472996466801131056365192598902193624359867513868183133575\", \"96825140531144737658509836612440392167927082891120843083486488974093462808519\"]",
+  "bestBid":0.34,"bestAsk":0.36,"spread":0.02,"volume24hr":111.39,"endDate":"2026-08-07T23:10:00Z","enableOrderBook":true},
+ {"question":"Los Angeles Angels vs. Miami Marlins: O/U 9.5","conditionId":"0x82018b39fd4f716e6c5beb71837016bd235192c27f40ba1d69edee7958126aa3",
+  "outcomes":"[\"Over\", \"Under\"]","clobTokenIds":"[\"114690499535526729781918709459434519343511482830739521792892023230189444884939\", \"45482723865068340889625454552704275811369417634197997726753149697891081821111\"]",
+  "bestBid":0.42,"bestAsk":0.45,"spread":0.03,"endDate":"2026-08-07T23:10:00Z","enableOrderBook":true}]}]

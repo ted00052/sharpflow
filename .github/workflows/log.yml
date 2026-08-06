@@ -1,0 +1,37 @@
+name: edge-logger
+on:
+  schedule:
+    - cron: "15 * * * *"   # hourly at :15 UTC
+  workflow_dispatch: {}     # manual run button
+
+permissions:
+  contents: write
+
+concurrency:
+  group: edge-logger
+  cancel-in-progress: false
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run logger
+        run: python edge_logger.py --min-edge 2
+
+      - name: Commit log + page
+        run: |
+          git config user.name "sharpflow-edge-logger"
+          git config user.email "actions@users.noreply.github.com"
+          git add data docs
+          if git diff --cached --quiet; then
+            echo "No changes this run."
+          else
+            git commit -m "log: $(date -u +'%Y-%m-%d %H:%M') update"
+            git push
+          fi

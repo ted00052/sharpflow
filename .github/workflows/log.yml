@@ -1,7 +1,6 @@
 name: edge-logger
 on:
-  schedule:
-    - cron: "15 * * * *"   # hourly at :15 UTC
+  schedule: [{cron: "*/30 22-23 * * *"}, {cron: "*/30 0-5 * * *"}, {cron: "15 16-21 * * *"}, {cron: "15 6-15/3 * * *"}]  # time-targeted: dense in US game windows
   workflow_dispatch: {}     # manual run button
 
 permissions:
